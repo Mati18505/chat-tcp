@@ -1,0 +1,45 @@
+tcp  connection, 
+pinger - :
+- ctor: receiveTimer = TIME_OUT_TIMER
+- IsPing: byte[] -> bool: Sprawdza nagłówek, i zwraca czy jest pingiem. if size is equal 0 -> true
+- PingReceived: resetuje receiveTimer
+- CreatePing: () -> byte[]: Tworzy wiadomość do wysłania jako ping
+- TimeOut: () -> bool: update timer, return receiveTimer <= 0 
+
+framer - message boundary, (length prefix parsing), max message size , 
+         version, ping (receive: message size == 0), przetrzymuje Pinger: 
+- error podczas tcp::read - return error
+- if size is greater than max message size - ignore rest, return error
+- if pinger::IsPing(header) - pinger::PingReceived, continue
+- if pinger::TimeOut() - return error
+- koniec wiadomości - return bytes
+
+
+tcp:
++ Receive: (x: byte_count) -> byte[], error - zawsze zwraca tyle bajtów ile chcemy, lub error 
+
+framer: 
++ Receive: () -> byte[] (bez nagłówka): odczytuje max 4096 (jeśli jest przy końcówce wiadomości odczyta pozostałe do końca) bajtów z tcp, jeśli odczytał nagłówek, w którym wielkość jest większa niż dozwolona - zwraca error, dokłada do swojego bufora, jeśli ma w buforze pełną wiadomość zwraca ją 
++ Send: byte[] (bez nagłówka) -> error: dodaje nagłówek (ilość bajtów)
+
+## messanger
+messanger - []byte -> Message (parsing)
+
++ Receive: () -> Message (only data):  framer::receive, parse 
++ Send: Message -> error: parse, framer::Send
+
+# serwer:
+## server
+listener, []connection
+Create: ip, port -> self: listen, 
+Accept: (handleFunc: (connection) -> ()) -> (): blokuje, accept, handle (goroutine) 
+
+clients receive -> broadcast receiver -> logika serwera -> broadcast sender -> clients send
+
+
+TODO:
+serwer: centralny (channels)
+serwee: connection lifetime (dodaję i nie usuwam w accept)
+broadcast
+pinging
+sprawdzanie wersji protokołu
